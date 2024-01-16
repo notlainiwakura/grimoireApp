@@ -1,55 +1,38 @@
 import sys
 from lxml import etree
 
-
 def generate_unique_xpaths(xml_file_path, element_filter=None):
     tree = etree.parse(xml_file_path)
     root = tree.getroot()
 
-    used_xpaths = {}
+    def create_xpath(element):
+        attributes = [f"@{k}='{v}'" for k, v in element.items()]
+        attributes_str = "[" + " and ".join(attributes) + "]" if attributes else ""
+        return f"//{element.tag}{attributes_str}"
 
-    def is_specific_element(element, filter_type):
-        tag = element.tag.lower()
+    def is_unique_xpath(xpath, all_xpaths):
+        return all_xpaths.get(xpath, 0) < 1
 
-        # Exclude 'ButtonExGroup' when filter is 'button'
-        if filter_type == 'button' and 'buttonexgroup' == tag:
-            return False
-
-        # Normal filter condition
-        if filter_type is None:
-            return True
-
-        filter_type = filter_type.lower()
-
-        # Check if filter_type is a substring of tag
-        return filter_type in tag
-
-    def generate_xpath_with_index(base_xpath, count):
-        return f"{base_xpath}[{count}]" if count > 1 else base_xpath
+    all_xpaths = {}
 
     for element in root.iter():
-        if not is_specific_element(element, element_filter):
+        if element_filter and element_filter.lower() not in element.tag.lower():
             continue
 
-        # Incorporate 'name' attribute in XPath if present
-        name = element.get('name')
-        if name:
-            base_xpath = f"//{element.tag}[@name='{name}']"
-        else:
-            base_xpath = f"//{element.tag}"
+        xpath = create_xpath(element)
+        count = all_xpaths.get(xpath, 0)
+        all_xpaths[xpath] = count + 1
 
-        if base_xpath:
-            count = used_xpaths.get(base_xpath, 0) + 1
-            used_xpaths[base_xpath] = count
-            unique_xpath = generate_xpath_with_index(base_xpath, count)
-            yield unique_xpath
+        if count > 0:
+            # Add index to XPath if it's not unique
+            xpath += f"[{count + 1}]"
 
+        yield xpath
 
 def main(xml_file_path, element_filter):
     xpaths = list(generate_unique_xpaths(xml_file_path, element_filter))
     for xpath in xpaths:
         print(xpath)
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
