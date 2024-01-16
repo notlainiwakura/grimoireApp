@@ -1,11 +1,7 @@
 import sys
 from lxml import etree
 
-def generate_unique_xpaths(xml_file_path, filter_buttons=False):
-    """
-    Generates unique and precise XPaths  for each element in the XML file.
-    Optionally filters to return only elements that are buttons, based on the tag or 'name' attribute.
-    """
+def generate_unique_xpaths(xml_file_path, element_filter=None):
     # Parse the XML file
     tree = etree.parse(xml_file_path)
     root = tree.getroot()
@@ -13,11 +9,17 @@ def generate_unique_xpaths(xml_file_path, filter_buttons=False):
     # Initialize a dictionary to keep track of used XPaths
     used_xpaths = {}
 
-    # Function to check if the element is a button
-    def is_button(element):
-        tag_contains_button = 'button' in element.tag.lower()
-        name_contains_button = 'button' in (element.get('name', '').lower())
-        return tag_contains_button or name_contains_button
+    # Function to check if the element matches the specified filter
+    def is_specific_element(element, filter_type):
+        if filter_type is None:
+            return True
+
+        filter_type = filter_type.lower()
+        tag = element.tag.lower()
+        name = element.get('name', '').lower()
+
+        # Check if filter_type is a substring of tag or name
+        return filter_type in tag or filter_type in name
 
     # Function to generate XPath with an index if needed for uniqueness
     def generate_xpath_with_index(base_xpath, count):
@@ -28,19 +30,18 @@ def generate_unique_xpaths(xml_file_path, filter_buttons=False):
 
     # Iterate through all elements
     for element in root.iter():
+
         base_xpath = ''
 
-        # Check if element is a button when filtering
-        if filter_buttons and not is_button(element):
+        # Check if element matches the specified filter
+        if not is_specific_element(element, element_filter):
             continue
 
-        # Check if 'name' attribute exists
+        # Generate base XPath
         name = element.get('name')
         if name:
             base_xpath = f"//{element.tag}[@name='{name}']"
-
-        # Check if text content exists and 'name' is not available
-        elif element.text and not name:
+        elif element.text:
             text = element.text.strip()
             base_xpath = f"//*[text()='{text}']"
 
@@ -51,18 +52,17 @@ def generate_unique_xpaths(xml_file_path, filter_buttons=False):
             unique_xpath = generate_xpath_with_index(base_xpath, count)
             yield unique_xpath
         else:
-            # Indicate if neither 'name' nor text content can be used
             yield "Element cannot be found using 'name' or 'text' tag."
 
-def main(xml_file_path, filter_buttons):
-    xpaths = list(generate_unique_xpaths(xml_file_path, filter_buttons))
+def main(xml_file_path, element_filter):
+    xpaths = list(generate_unique_xpaths(xml_file_path, element_filter))
     for xpath in xpaths:
         print(xpath)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: python script_name.py <xml_file_path> [buttons]")
+    if len(sys.argv) < 2:
+        print("Usage: python script_name.py <xml_file_path> [filter]")
         sys.exit(1)
     xml_file_path = sys.argv[1]
-    filter_buttons = len(sys.argv) == 3 and sys.argv[2].lower() == "buttons"
-    main(xml_file_path, filter_buttons)
+    element_filter = sys.argv[2] if len(sys.argv) > 2 else None
+    main(xml_file_path, element_filter)
