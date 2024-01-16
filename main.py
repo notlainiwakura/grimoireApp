@@ -3,7 +3,7 @@ from lxml import etree
 
 def generate_unique_xpaths(xml_file_path, filter_buttons=False):
     """
-    Generates unique and precise XPaths for each element in the XML file.
+    Generates unique and precise XPaths  for each element in the XML file.
     Optionally filters to return only elements that are buttons, based on the tag or 'name' attribute.
     """
     # Parse the XML file
