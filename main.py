@@ -1,17 +1,22 @@
 import sys
 from lxml import etree
 
+
 def generate_unique_xpaths(xml_file_path, element_filter=None):
     tree = etree.parse(xml_file_path)
     root = tree.getroot()
 
-    def create_xpath(element):
-        attributes = [f"@{k}='{v}'" for k, v in element.items()]
-        attributes_str = "[" + " and ".join(attributes) + "]" if attributes else ""
-        return f"//{element.tag}{attributes_str}"
+    def create_basic_xpath(element):
+        if element.get('name'):
+            return f"//{element.tag}[@name='{element.get('name')}']"
+        elif element.text and element.text.strip():
+            return f"//{element.tag}[text()='{element.text.strip()}']"
+        else:
+            return f"//{element.tag}"
 
-    def is_unique_xpath(xpath, all_xpaths):
-        return all_xpaths.get(xpath, 0) < 1
+    def create_detailed_xpath(element):
+        attributes = [f"@{k}='{v}'" for k, v in element.items()]
+        return f"//{element.tag}[{' and '.join(attributes)}]"
 
     all_xpaths = {}
 
@@ -19,20 +24,24 @@ def generate_unique_xpaths(xml_file_path, element_filter=None):
         if element_filter and element_filter.lower() not in element.tag.lower():
             continue
 
-        xpath = create_xpath(element)
-        count = all_xpaths.get(xpath, 0)
-        all_xpaths[xpath] = count + 1
+        basic_xpath = create_basic_xpath(element)
+        count = all_xpaths.get(basic_xpath, 0)
 
+        # Use basic xpath if unique, else create detailed xpath
+        xpath = basic_xpath if count == 0 else create_detailed_xpath(element)
+
+        all_xpaths[basic_xpath] = count + 1
         if count > 0:
-            # Add index to XPath if it's not unique
             xpath += f"[{count + 1}]"
 
         yield xpath
+
 
 def main(xml_file_path, element_filter):
     xpaths = list(generate_unique_xpaths(xml_file_path, element_filter))
     for xpath in xpaths:
         print(xpath)
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
