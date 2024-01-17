@@ -48,9 +48,19 @@ def write_to_json_file(xpath_data, output_file):
         json.dump(output, file, indent=4)
 
 
+def get_json_filename(tree):
+    root = tree.getroot()
+    for element in root.iter():
+        if 'BaseScreen' in element.get('extends', ''):
+            return element.tag + '.json'
+    return 'default_output.json'
+
+
 def main(xml_file_path, element_filter):
+    tree = etree.parse(xml_file_path)
+    json_filename = get_json_filename(tree)
     xpath_data = generate_unique_xpaths(xml_file_path, element_filter)
-    output_file = os.path.join(os.path.dirname(xml_file_path), 'xpath_output.json')
+    output_file = os.path.join(os.path.dirname(xml_file_path), json_filename)
     write_to_json_file(xpath_data, output_file)
     print(f"XPaths have been written to {output_file}")
 
